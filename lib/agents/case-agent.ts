@@ -1,13 +1,13 @@
 /**
  * CaseSnipe.ai - Case Agent
- * RunnableSequence: Tavily search → MiniMax format. Stateless, no memory.
+ * RunnableSequence: Tavily search → Nebius LLM format. Stateless, no memory.
  * If Tavily returns empty, LLM reasons from training knowledge.
  */
 
 import { RunnableLambda } from "@langchain/core/runnables";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { createTavilyLegalTool } from "@/lib/tools/tavily-legal";
-import { createCaseAgentLLM } from "@/lib/llms/minimax";
+import { createCaseAgentLLM } from "@/lib/llms/nebius";
 import type { CaseBriefing, CaseAgentInput } from "@/types/agents";
 
 const SYSTEM_PROMPT = `You are a neutral court clerk presenting case facts. You do NOT favor prosecution or defense.

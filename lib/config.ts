@@ -3,7 +3,7 @@
  * Validates required API keys at runtime. Do not commit .env.local.
  */
 
-const requiredKeys = ["OPENROUTER_API_KEY", "TAVILY_API_KEY", "MINIMAX_API_KEY", "MINIMAX_GROUP_ID"] as const;
+const requiredKeys = ["OPENROUTER_API_KEY", "TAVILY_API_KEY", "NEBIUS_API_KEY"] as const;
 
 function getEnv(key: string): string | undefined {
   return process.env[key];
@@ -22,8 +22,7 @@ function validateConfig(): void {
 export interface AppConfig {
   openRouterApiKey: string;
   tavilyApiKey: string;
-  minimaxApiKey: string;
-  minimaxGroupId: string;
+  nebiusApiKey: string;
 }
 
 /**
@@ -32,10 +31,9 @@ export interface AppConfig {
 export function getConfig(): AppConfig {
   validateConfig();
   return {
-    openRouterApiKey: getEnv("OPENROUTER_API_KEY")!,
-    tavilyApiKey: getEnv("TAVILY_API_KEY")!,
-    minimaxApiKey: getEnv("MINIMAX_API_KEY")!,
-    minimaxGroupId: getEnv("MINIMAX_GROUP_ID")!,
+    openRouterApiKey: getEnv("OPENROUTER_API_KEY")!.trim(),
+    tavilyApiKey: getEnv("TAVILY_API_KEY")!.trim(),
+    nebiusApiKey: getEnv("NEBIUS_API_KEY")!.trim(),
   };
 }
 
