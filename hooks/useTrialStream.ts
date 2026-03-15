@@ -169,7 +169,7 @@ export function useTrialStream() {
             toolCall: {
               id: msgId,
               tool: evt.toolName ?? "tool",
-              input: evt.toolInput ? (() => { try { return JSON.parse(evt.toolInput!); } catch { return evt.toolInput!; } })() : "",
+              input: evt.toolInput ?? "",
               timestamp: fmtTime(evt.timestamp),
             },
             timestamp: fmtTime(evt.timestamp),

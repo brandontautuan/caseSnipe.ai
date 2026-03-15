@@ -39,9 +39,9 @@ export function createCaseAgentLLM() {
 
   return new ChatOpenAI({
     model: getNebiusModel(),
+    apiKey: nebiusApiKey,
     configuration: {
       baseURL: getNebiusBaseUrl(),
-      apiKey: nebiusApiKey,
     },
     temperature: 0.3,
   });
@@ -66,9 +66,9 @@ export function createJudgeLLM() {
 
   return new ChatOpenAI({
     model: process.env.JUDGE_MODEL?.trim() || getNebiusModel(),
+    apiKey: nebiusApiKey,
     configuration: {
       baseURL: getNebiusBaseUrl(),
-      apiKey: nebiusApiKey,
     },
     temperature: 0.3,
   });

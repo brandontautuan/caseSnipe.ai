@@ -17,7 +17,7 @@ export function createModel(
   }
 
   return new ChatOpenAI({
-    modelName: modelId,
+    model: modelId,
     apiKey,
     configuration: {
       baseURL: "https://openrouter.ai/api/v1",
