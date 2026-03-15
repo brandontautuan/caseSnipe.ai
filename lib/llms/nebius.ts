@@ -4,7 +4,6 @@
  */
 
 import { ChatOpenAI } from "@langchain/openai";
-import { ChatOpenRouter } from "@langchain/openrouter";
 import { getConfig } from "@/lib/config";
 
 // Nebius: no trailing slash — some clients concatenate paths; trailing slash can cause 400
@@ -30,18 +29,25 @@ export function createCaseAgentLLM() {
   const { nebiusApiKey, openRouterApiKey } = getConfig();
 
   if (useOpenRouter()) {
-    return new ChatOpenRouter({
+    return new ChatOpenAI({
       model: OPENROUTER_MODEL,
-      apiKey: openRouterApiKey,
+      openAIApiKey: openRouterApiKey,
+      configuration: {
+        baseURL: "https://openrouter.ai/api/v1",
+        defaultHeaders: {
+          "HTTP-Referer": "https://casesnipe.ai",
+          "X-Title": "CaseSnipe.ai",
+        },
+      },
       temperature: 0.3,
     });
   }
 
   return new ChatOpenAI({
     model: getNebiusModel(),
+    openAIApiKey: nebiusApiKey,
     configuration: {
       baseURL: getNebiusBaseUrl(),
-      apiKey: nebiusApiKey,
     },
     temperature: 0.3,
   });
@@ -57,18 +63,25 @@ export function createJudgeLLM() {
     (useOpenRouter() ? OPENROUTER_MODEL : getNebiusModel());
 
   if (useOpenRouter()) {
-    return new ChatOpenRouter({
+    return new ChatOpenAI({
       model,
-      apiKey: openRouterApiKey,
+      openAIApiKey: openRouterApiKey,
+      configuration: {
+        baseURL: "https://openrouter.ai/api/v1",
+        defaultHeaders: {
+          "HTTP-Referer": "https://casesnipe.ai",
+          "X-Title": "CaseSnipe.ai",
+        },
+      },
       temperature: 0.3,
     });
   }
 
   return new ChatOpenAI({
     model: process.env.JUDGE_MODEL?.trim() || getNebiusModel(),
+    openAIApiKey: nebiusApiKey,
     configuration: {
       baseURL: getNebiusBaseUrl(),
-      apiKey: nebiusApiKey,
     },
     temperature: 0.3,
   });

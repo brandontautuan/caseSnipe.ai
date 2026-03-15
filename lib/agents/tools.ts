@@ -14,7 +14,7 @@ export const REST_CASE_SIGNAL = "__REST_CASE__";
  * Build the full tool suite bound to a specific case ID.
  * Call once per agent per trial.
  */
-export function buildTools(caseId: string) {
+export function buildTools(caseId: string, _ragMode = false) {
   const tavilySearch = new DynamicStructuredTool({
     name: "tavily_search",
     description:

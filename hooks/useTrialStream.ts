@@ -59,6 +59,7 @@ export interface TrialConfig {
   defenseModel: string;
   judgeModel: string;
   maxRounds?: number;
+  ragMode?: boolean;
 }
 
 const INITIAL_STATE: TrialState = {

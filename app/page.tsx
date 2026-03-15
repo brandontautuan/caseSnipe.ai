@@ -45,19 +45,27 @@ export default function Home() {
     }, 1800);
   }
 
-  // Fire banner whenever a new argument or evidence message appears
+  // Detect the actual interjection keyword from the start of an argument
+  function detectKeyword(text: string): BannerWord | null {
+    if (/^OBJECTION[:\s!]/i.test(text)) return "OBJECTION!";
+    if (/^HOLD IT[:\s!]/i.test(text))   return "HOLD IT!";
+    if (/^TAKE THAT[:\s!]/i.test(text)) return "TAKE THAT!";
+    return null;
+  }
+
+  // Fire banner only when the agent actually uses a keyword, with the correct word and side color
   useEffect(() => {
     const newPros = state.prosecutionMessages.length;
     const newDef  = state.defenseMessages.length;
 
     if (newPros > prevProsCountRef.current) {
-      // Check if newest prosecution message is an argument or evidence
       const newest = state.prosecutionMessages[state.prosecutionMessages.length - 1];
       if (newest) {
         if (newest.type === "evidence") {
           showBanner("TAKE THAT!", "evidence");
         } else if (newest.type === "argument") {
-          showBanner("OBJECTION!", "prosecution");
+          const kw = detectKeyword(newest.content);
+          if (kw) showBanner(kw, "prosecution");
         }
       }
       prevProsCountRef.current = newPros;
@@ -69,7 +77,8 @@ export default function Home() {
         if (newest.type === "evidence") {
           showBanner("TAKE THAT!", "evidence");
         } else if (newest.type === "argument") {
-          showBanner("HOLD IT!", "defense");
+          const kw = detectKeyword(newest.content);
+          if (kw) showBanner(kw, "defense");
         }
       }
       prevDefCountRef.current = newDef;

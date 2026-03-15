@@ -19,6 +19,7 @@ export interface TrialConfig {
   defenseModel: string;
   judgeModel: string;
   maxRounds?: number;
+  ragMode?: boolean;
   onEvent?: (event: TrialEvent) => void;
 }
 
@@ -58,6 +59,8 @@ function now(): string {
 
 /**
  * Extract events from a LangGraph agent response message stream.
+ * Accumulates all AI text into ONE argument event per turn — no matter how many
+ * internal tool-call reasoning iterations the agent runs.
  */
 function parseAgentMessages(
   messages: BaseMessage[],
@@ -68,11 +71,23 @@ function parseAgentMessages(
   let summary = "";
   let rested = false;
 
+  // Accumulate all AI text across reasoning iterations into ONE argument.
+  const argumentParts: string[] = [];
+
+  const flushArgument = () => {
+    if (argumentParts.length === 0) return;
+    const combined = argumentParts.join(" ").trim();
+    argumentParts.length = 0;
+    if (combined) {
+      events.push({ type: "argument", side, round, content: combined, timestamp: now() });
+    }
+  };
+
   for (const msg of messages) {
     if (msg._getType() === "ai") {
       const aiMsg = msg as AIMessage;
 
-      // Check for tool calls in the message
+      // Tool calls — emit each as a tool_call event (useful for UI display)
       const toolCalls = aiMsg.tool_calls ?? [];
       for (const tc of toolCalls) {
         const inputStr = JSON.stringify(tc.args ?? {});
@@ -87,15 +102,20 @@ function parseAgentMessages(
         });
       }
 
-      // Text content from the AI
-      const text = typeof aiMsg.content === "string" ? aiMsg.content : "";
-      if (text.trim()) {
-        events.push({ type: "argument", side, round, content: text.trim(), timestamp: now() });
-      }
+      // Collect AI text — strip echoed role labels, then accumulate
+      const rawText = typeof aiMsg.content === "string" ? aiMsg.content : "";
+      const text = rawText
+        .replace(/^\s*\[?(PROSECUTION|DEFENSE|JUDGE|CALLOWAY|VALE|OSEI)\]?\s*ROUND\s*\d+[:\]]\s*/i, "")
+        .replace(/^\s*(PROSECUTION|DEFENSE|JUDGE|CALLOWAY|VALE|OSEI)\s*[:—]\s*/i, "")
+        .trim();
+      if (text) argumentParts.push(text);
+
     } else if (msg._getType() === "tool") {
       const output = typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content);
 
       if (output.startsWith(REST_CASE_SIGNAL)) {
+        // Flush accumulated text as ONE argument before closing the turn
+        flushArgument();
         rested = true;
         summary = output.replace(`${REST_CASE_SIGNAL}:`, "").trim();
         events.push({ type: "turn_end", side, round, content: summary, timestamp: now() });
@@ -111,10 +131,12 @@ function parseAgentMessages(
     }
   }
 
+  // Flush any remaining text (agent didn't call rest_case)
+  flushArgument();
+
   if (!rested && !summary) {
-    // Extract last AI text as summary
     const lastArg = [...events].reverse().find((e) => e.type === "argument");
-    summary = lastArg?.content?.slice(0, 300) ?? `${side} rests`;
+    summary = lastArg?.content ?? `${side} rests`;
     events.push({ type: "turn_end", side, round, content: summary, timestamp: now() });
   }
 
@@ -131,6 +153,7 @@ export async function runTrial(config: TrialConfig): Promise<TrialResult> {
     defenseModel,
     judgeModel,
     maxRounds = 3,
+    ragMode = false,
     onEvent = () => {},
   } = config;
 
@@ -146,7 +169,7 @@ export async function runTrial(config: TrialConfig): Promise<TrialResult> {
   };
 
   // ── Build tools & models ─────────────────────────────────────────────────
-  const tools = buildTools(caseId);
+  const tools = buildTools(caseId, ragMode);
   const prosecutionLLM = createModel(prosecutionModel, { temperature: 0.7 });
   const defenseLLM     = createModel(defenseModel,     { temperature: 0.7 });
 
@@ -167,29 +190,52 @@ export async function runTrial(config: TrialConfig): Promise<TrialResult> {
   const briefing = formatCaseBriefing(legalCase);
   emit({ type: "briefing", content: briefing });
 
+  // ── Judge opens the trial ─────────────────────────────────────────────────
+  emit({ type: "turn_start", side: "judge", round: 0, content: "Judge opening the trial" });
+  const judgeOpenLLM = createModel(judgeModel, { temperature: 0.3 });
+  let judgeOpening = `COURT WILL COME TO ORDER. The matter before this court is ${legalCase.title}. Prosecution will proceed first.`;
+  try {
+    const openingResponse = await judgeOpenLLM.invoke([
+      new SystemMessage(JUDGE_SYSTEM_PROMPT),
+      new HumanMessage(
+        `Open this trial in exactly 3 sentences:\n` +
+        `1. "COURT WILL COME TO ORDER." — state the case name and the charges against the defendant.\n` +
+        `2. State the central legal question this court must decide.\n` +
+        `3. Instruct prosecution to proceed.\n\n` +
+        `Case record:\n${briefing}`
+      ),
+    ]);
+    judgeOpening = typeof openingResponse.content === "string"
+      ? openingResponse.content.trim()
+      : judgeOpening;
+  } catch { /* use default */ }
+  emit({ type: "argument", side: "judge", round: 0, content: judgeOpening });
+
   // Shared conversation history (both agents see the same transcript)
   const sharedHistory: BaseMessage[] = [
     new SystemMessage(`CASE BRIEFING:\n${briefing}`),
   ];
 
-  const prosecutionSummaries: string[] = [];
-  const defenseSummaries: string[] = [];
+  const prosecutionFullArgs: string[] = []; // full argument text passed to defense each round
+  const defenseFullArgs: string[] = [];      // full argument text passed to prosecution each round
 
   // ── Turn-taking loop ─────────────────────────────────────────────────────
   for (let round = 1; round <= maxRounds; round++) {
     // ── Prosecution turn ──
     emit({ type: "turn_start", side: "prosecution", round, content: `Prosecution begins round ${round}` });
 
+    const lastDefenseArg = defenseFullArgs[defenseFullArgs.length - 1] ?? "";
     const pInput =
       round === 1
-        ? `Round ${round} of ${maxRounds}. The court is in session. Prosecution — you have the floor. Present your opening argument.`
-        : `Round ${round} of ${maxRounds}. Defense has just argued: "${defenseSummaries[defenseSummaries.length - 1]}". Prosecution — the floor is yours. Rebut and press your case.`;
+        ? `Round ${round} of ${maxRounds}. The judge has opened the trial. Prosecution — present your first argument. Reference specific evidence from the case record.`
+        : `Round ${round} of ${maxRounds}. Defense just argued:\n\n"${lastDefenseArg}"\n\nProsecution — counter that argument directly, then press your case.`;
 
     let prosecutionResult;
     try {
-      prosecutionResult = await prosecutionAgent.invoke({
-        messages: [...sharedHistory, new HumanMessage(pInput)],
-      });
+      prosecutionResult = await prosecutionAgent.invoke(
+        { messages: [...sharedHistory, new HumanMessage(pInput)] },
+        { recursionLimit: 10 }
+      );
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       emit({ type: "error", side: "prosecution", round, content: msg });
@@ -200,19 +246,21 @@ export async function runTrial(config: TrialConfig): Promise<TrialResult> {
     const { events: pEvents, summary: pSummary } = parseAgentMessages(pNewMessages, "prosecution", round);
 
     for (const e of pEvents) { transcript.push(e); onEvent(e); }
-    prosecutionSummaries.push(pSummary);
-    sharedHistory.push(new AIMessage(`[PROSECUTION ROUND ${round}]: ${pSummary}`));
+    const pFullArg = pEvents.filter(e => e.type === "argument").map(e => e.content).join(" ").trim() || pSummary;
+    prosecutionFullArgs.push(pFullArg);
+    sharedHistory.push(new AIMessage(pFullArg));
 
     // ── Defense turn ──
     emit({ type: "turn_start", side: "defense", round, content: `Defense begins round ${round}` });
 
-    const dInput = `Round ${round} of ${maxRounds}. Prosecution has just argued: "${pSummary}". Defense — the floor is yours. Answer them.`;
+    const dInput = `Round ${round} of ${maxRounds}. Prosecution just argued:\n\n"${pFullArg}"\n\nDefense — respond directly to that argument. Challenge it specifically, then make your own point.`;
 
     let defenseResult;
     try {
-      defenseResult = await defenseAgent.invoke({
-        messages: [...sharedHistory, new HumanMessage(dInput)],
-      });
+      defenseResult = await defenseAgent.invoke(
+        { messages: [...sharedHistory, new HumanMessage(dInput)] },
+        { recursionLimit: 10 }
+      );
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       emit({ type: "error", side: "defense", round, content: msg });
@@ -223,8 +271,9 @@ export async function runTrial(config: TrialConfig): Promise<TrialResult> {
     const { events: dEvents, summary: dSummary } = parseAgentMessages(dNewMessages, "defense", round);
 
     for (const e of dEvents) { transcript.push(e); onEvent(e); }
-    defenseSummaries.push(dSummary);
-    sharedHistory.push(new AIMessage(`[DEFENSE ROUND ${round}]: ${dSummary}`));
+    const dFullArg = dEvents.filter(e => e.type === "argument").map(e => e.content).join(" ").trim() || dSummary;
+    defenseFullArgs.push(dFullArg);
+    sharedHistory.push(new AIMessage(dFullArg));
   }
 
   // ── Judge verdict ────────────────────────────────────────────────────────
