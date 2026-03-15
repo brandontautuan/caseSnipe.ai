@@ -43,8 +43,8 @@ Based on [CLAUDE.md](./CLAUDE.md). Check off items as they're completed.
 
 - [x] **Wire backend into frontend** — Full trial loop via `/api/trial/stream`, useTrialStream hook
 - [x] **Scoring logic** — Penalize weak arguments, reward reasoning (lib/scoring.ts)
-- [ ] **Prompt tuning** — Prosecutor and Defendant feel genuinely adversarial
-- [ ] **Demo polish** — 3 showcase cases: easy, medium, hard
+- [x] **Prompt tuning** — Character identity anchoring, forbidden LLM phrases, in-scene turn inputs, in-character uncertainty handling
+- [x] **Demo polish** — 3 showcase cases with taglines: shoplifting-001 (easy), selfdefense-001 (medium), fraud-001 (hard); balanced evidence on easy case
 
 ---
 

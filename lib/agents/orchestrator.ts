@@ -182,8 +182,8 @@ export async function runTrial(config: TrialConfig): Promise<TrialResult> {
 
     const pInput =
       round === 1
-        ? `Round ${round} of ${maxRounds}. Make your opening argument as the PROSECUTOR.`
-        : `Round ${round} of ${maxRounds}. Defense has argued: "${defenseSummaries[defenseSummaries.length - 1]}". Rebut and advance your prosecution argument.`;
+        ? `Round ${round} of ${maxRounds}. The court is in session. Prosecution — you have the floor. Present your opening argument.`
+        : `Round ${round} of ${maxRounds}. Defense has just argued: "${defenseSummaries[defenseSummaries.length - 1]}". Prosecution — the floor is yours. Rebut and press your case.`;
 
     let prosecutionResult;
     try {
@@ -206,7 +206,7 @@ export async function runTrial(config: TrialConfig): Promise<TrialResult> {
     // ── Defense turn ──
     emit({ type: "turn_start", side: "defense", round, content: `Defense begins round ${round}` });
 
-    const dInput = `Round ${round} of ${maxRounds}. Prosecution just argued: "${pSummary}". Mount your defense as DEFENSE COUNSEL.`;
+    const dInput = `Round ${round} of ${maxRounds}. Prosecution has just argued: "${pSummary}". Defense — the floor is yours. Answer them.`;
 
     let defenseResult;
     try {
@@ -241,7 +241,7 @@ export async function runTrial(config: TrialConfig): Promise<TrialResult> {
   try {
     const judgeResponse = await judgeLLM.invoke([
       new SystemMessage(JUDGE_SYSTEM_PROMPT),
-      new HumanMessage(`Complete trial transcript:\n\n${transcriptText}\n\nDeliver your verdict.`),
+      new HumanMessage(`Complete trial transcript:\n\n${transcriptText}\n\nBoth sides have rested. The court will now render its verdict.`),
     ]);
     verdict =
       typeof judgeResponse.content === "string"

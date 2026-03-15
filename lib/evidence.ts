@@ -70,8 +70,7 @@ ${legalCase.keyFacts.map((f, i) => `${i + 1}. ${f}`).join("\n")}
 AVAILABLE EVIDENCE (request via request_evidence tool):
 ${legalCase.availableEvidence.filter((e) => e.available).map((e) => `• ${e.name}`).join("\n")}
 
-Both sides have access to the same evidence pool. Evidence may favor either party.
-The outcome is not predetermined — argue from the facts.
+Both parties may request any listed item via the evidence record. Argue from what the record supports.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `.trim();
 }

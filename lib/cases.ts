@@ -10,6 +10,8 @@ export interface LegalCase {
   id: string;
   title: string;
   difficulty: Difficulty;
+  /** One-line hook shown on the case selection screen */
+  tagline: string;
   charges: string;
   synopsis: string;
   /** Hidden from agents — used only for scoring */
@@ -33,29 +35,31 @@ export const CASES: LegalCase[] = [
     id: "shoplifting-001",
     title: "People v. Marcus Webb — Grand Theft",
     difficulty: "easy",
+    tagline: "Four laptops. One stroller. Zero receipts.",
     charges: "Grand Theft (PC 487) — theft of electronics valued at $4,800",
     synopsis:
-      "Marcus Webb is accused of entering a Best Buy store and removing four laptops concealed in a stroller. Surveillance footage shows him entering with an empty stroller and leaving with a visibly full one. He was apprehended in the parking lot.",
+      "Marcus Webb is accused of entering a Best Buy store and removing four laptops concealed in a stroller. Surveillance footage shows him entering with an empty stroller and leaving with a visibly full one. He was apprehended in the parking lot. Webb claims the items belonged to a friend and he was unaware they were in the stroller.",
     hiddenOutcome: "guilty",
     keyFacts: [
       "Defendant entered with empty stroller, exited with stroller containing 4 laptops",
       "Store surveillance captured full sequence",
       "Defendant had no receipt",
       "Loss prevention stopped defendant in parking lot",
+      "Defendant claims he was holding the stroller for a companion who never appeared",
       "Laptops recovered intact",
     ],
     availableEvidence: [
       {
         id: "e1",
         name: "Surveillance footage — Exhibit A",
-        description: "Clear video of defendant entering with empty stroller and exiting with concealed laptops",
+        description: "Clear video of defendant entering with empty stroller and exiting with concealed laptops. No companion is visible on footage.",
         favorsSide: "prosecution",
         available: true,
       },
       {
         id: "e2",
         name: "Loss prevention testimony",
-        description: "LP officer testifies they observed concealment and apprehended defendant in lot",
+        description: "LP officer testifies they observed concealment behavior and that defendant was alone throughout",
         favorsSide: "prosecution",
         available: true,
       },
@@ -76,7 +80,14 @@ export const CASES: LegalCase[] = [
       {
         id: "e5",
         name: "Character witness",
-        description: "Neighbor testifies defendant has no prior criminal history",
+        description: "Neighbor testifies defendant has no prior criminal history and regularly helps neighbors with childcare",
+        favorsSide: "defense",
+        available: true,
+      },
+      {
+        id: "e6",
+        name: "Surveillance blind spot analysis",
+        description: "Defense expert notes a 40-second gap in camera coverage near the entrance — companion entry cannot be fully ruled out",
         favorsSide: "defense",
         available: true,
       },
@@ -86,6 +97,7 @@ export const CASES: LegalCase[] = [
     id: "assault-001",
     title: "State v. Torres — Simple Assault",
     difficulty: "easy",
+    tagline: "He threw the first punch. Or did he?",
     charges: "Simple Assault (PC 240) — punch to victim at a bar",
     synopsis:
       "David Torres is accused of striking victim Kyle Marsh at O'Malley's Bar after a verbal altercation. Two eyewitnesses observed the punch. Torres claims Marsh provoked him with racial slurs.",
@@ -132,6 +144,7 @@ export const CASES: LegalCase[] = [
     id: "contract-001",
     title: "Henderson v. Smith Roofing — Breach of Contract",
     difficulty: "easy",
+    tagline: "Half a roof. Full payment. No change order.",
     charges: "Breach of Contract — failure to complete roofing job per agreement",
     synopsis:
       "Plaintiff Linda Henderson hired Smith Roofing for a $12,000 roof replacement. Smith Roofing completed 60% of the job, collected full payment, and ceased work citing 'material disputes.' Henderson seeks full refund plus damages.",
@@ -180,6 +193,7 @@ export const CASES: LegalCase[] = [
     id: "selfdefense-001",
     title: "People v. Chen — Assault with Deadly Weapon (Self-Defense)",
     difficulty: "medium",
+    tagline: "He broke down her door at 2 AM. She had a knife.",
     charges: "Assault with a Deadly Weapon (PC 245(a)) — stabbing during home confrontation",
     synopsis:
       "Amy Chen is accused of stabbing her ex-boyfriend Derek Paulson who entered her apartment at 2 AM after she had obtained a restraining order against him. Paulson survived. Chen claims she acted in self-defense after he broke down her door and threatened her.",
@@ -241,6 +255,7 @@ export const CASES: LegalCase[] = [
     id: "wrongtermination-001",
     title: "Rodriguez v. Apex Corp — Wrongful Termination",
     difficulty: "medium",
+    tagline: "She filed a safety complaint. Two weeks later she was gone.",
     charges: "Wrongful Termination — retaliation for whistleblowing",
     synopsis:
       "Maria Rodriguez was terminated from Apex Corp two weeks after filing an internal safety complaint about unreported chemical spills. Apex claims she was terminated for performance reasons as part of a broader layoff.",
@@ -294,6 +309,7 @@ export const CASES: LegalCase[] = [
     id: "dui-001",
     title: "People v. Okafor — DUI with Contested Evidence",
     difficulty: "medium",
+    tagline: "BAC 0.09. Machine last calibrated 8 months ago.",
     charges: "DUI (VC 23152) — BAC 0.09 at time of breathalyzer",
     synopsis:
       "James Okafor was pulled over after swerving twice on Highway 101 at 11:30 PM. Breathalyzer reading was 0.09. Okafor claims the machine was miscalibrated and he had only consumed two glasses of wine. Field sobriety tests were inconclusive.",
@@ -349,6 +365,7 @@ export const CASES: LegalCase[] = [
     id: "fraud-001",
     title: "US v. Nakamura — Securities Fraud",
     difficulty: "hard",
+    tagline: "$40M sold 48 hours before the stock collapsed. Coincidence?",
     charges: "Securities Fraud (15 U.S.C. § 78j) — insider trading and market manipulation",
     synopsis:
       "CEO Richard Nakamura sold $40M in stock two days before his company announced a failed drug trial, causing shares to drop 62%. Prosecutors allege he used material non-public information. Defense argues the sale was part of a pre-scheduled 10b5-1 plan.",
@@ -410,6 +427,7 @@ export const CASES: LegalCase[] = [
     id: "constitutional-001",
     title: "Collins v. City of Riverdale — Fourth Amendment Violation",
     difficulty: "hard",
+    tagline: "No warrant. 200g found. Was the entry legal?",
     charges: "Civil rights violation (42 U.S.C. § 1983) — warrantless search and seizure",
     synopsis:
       "Police officers entered Marcus Collins' home without a warrant after receiving an anonymous tip about drugs. Officers claim exigent circumstances justified the entry after hearing 'loud sounds.' Collins argues the entry was unconstitutional and seeks suppression of all evidence.",
