@@ -1,6 +1,6 @@
 /**
  * CaseSnipe.ai - Environment configuration
- * Validates required API keys at runtime. Do not commit .env.local.
+ * All agents run via OpenRouter → Nebius. Only two keys needed.
  */
 
 const requiredKeys = ["OPENROUTER_API_KEY", "TAVILY_API_KEY", "NEBIUS_API_KEY"] as const;
@@ -25,9 +25,6 @@ export interface AppConfig {
   nebiusApiKey: string;
 }
 
-/**
- * Get validated app config. Throws if any required key is missing.
- */
 export function getConfig(): AppConfig {
   validateConfig();
   return {
@@ -37,9 +34,6 @@ export function getConfig(): AppConfig {
   };
 }
 
-/**
- * Check if config is valid without throwing.
- */
 export function isConfigValid(): boolean {
   return requiredKeys.every((key) => getEnv(key)?.trim());
 }
