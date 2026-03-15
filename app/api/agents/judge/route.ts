@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runJudgeVerdict } from "@/lib/agents/judge-agent";
 import { getConfig } from "@/lib/config";
+import { withNebiusFallback } from "@/lib/llms/fallback";
 import type { TrialTranscript } from "@/types/agents";
 
 export async function POST(request: NextRequest) {
@@ -51,15 +52,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await runJudgeVerdict({
-      caseBriefing: {
-        caseName,
-        facts,
-        timestamp: caseBriefing.timestamp ?? new Date().toISOString(),
-      },
-      prosecutionTurns,
-      defenseTurns,
-    });
+    const result = await withNebiusFallback(() =>
+      runJudgeVerdict({
+        caseBriefing: {
+          caseName,
+          facts,
+          timestamp: caseBriefing.timestamp ?? new Date().toISOString(),
+        },
+        prosecutionTurns,
+        defenseTurns,
+      })
+    );
 
     if (result.ok) {
       return NextResponse.json({ verdict: result.verdict });

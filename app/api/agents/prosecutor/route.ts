@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runProsecutorTurn } from "@/lib/agents/prosecutor-agent";
 import { getConfig } from "@/lib/config";
+import { withNebiusFallback } from "@/lib/llms/fallback";
 import type { CaseBriefing } from "@/types/agents";
 
 export async function POST(request: NextRequest) {
@@ -38,10 +39,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const output = await runProsecutorTurn(
-      { caseName, facts, timestamp: caseBriefing.timestamp ?? new Date().toISOString() },
-      message,
-      turnNumber
+    const output = await withNebiusFallback(() =>
+      runProsecutorTurn(
+        { caseName, facts, timestamp: caseBriefing.timestamp ?? new Date().toISOString() },
+        message,
+        turnNumber
+      )
     );
 
     return NextResponse.json({ output });

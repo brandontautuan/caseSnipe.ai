@@ -21,7 +21,7 @@ You will receive the case briefing and the full transcript of prosecution and de
 
 You do NOT know the hidden case outcome — reason only from the transcript.
 
-Example: {"ruling":"not guilty","reasoning":"...","confidence":"medium"}`;
+Example: {{"ruling":"not guilty","reasoning":"...","confidence":"medium"}}`;
 
 function formatTranscript(transcript: TrialTranscript): string {
   const { caseBriefing, prosecutionTurns, defenseTurns } = transcript;

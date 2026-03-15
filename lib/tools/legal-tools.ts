@@ -5,20 +5,36 @@
 
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
-import { TavilySearch } from "@langchain/tavily";
+import { TavilySearchAPIWrapper } from "@langchain/tavily";
 import { getConfig } from "@/lib/config";
 import type { StructuredToolInterface } from "@langchain/core/tools";
 
 export function createLegalTools(): StructuredToolInterface[] {
   const { tavilyApiKey } = getConfig();
 
-  const tavilySearch = new TavilySearch({
-    name: "tavily_search",
-    description:
-      "Search for legal case facts, rulings, statutes, and background. Use query format: '[topic] facts ruling legal background'",
-    maxResults: 5,
-    tavilyApiKey,
-  });
+  const tavilyApi = new TavilySearchAPIWrapper({ tavilyApiKey });
+
+  // Custom Tavily tool with query-only schema to avoid LLM passing invalid timeRange (e.g. "None")
+  const tavilySearch = tool(
+    async ({ query }) => {
+      const result = await tavilyApi.rawResults({
+        query,
+        maxResults: 5,
+        searchDepth: "basic",
+        topic: "general",
+      });
+      const results = (result as { results?: Array<{ title?: string; content?: string }> }).results ?? [];
+      return JSON.stringify(results.map((r) => ({ title: r.title, content: r.content })));
+    },
+    {
+      name: "tavily_search",
+      description:
+        "Search for legal case facts, rulings, statutes, and background. Use query format: '[topic] facts ruling legal background'",
+      schema: z.object({
+        query: z.string().describe("Search query for legal facts, rulings, or background"),
+      }),
+    }
+  );
 
   const requestEvidence = tool(
     async ({ evidenceType }) =>
