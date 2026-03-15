@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, useMemo } from "react";
 import BenchmarkBar from "./BenchmarkBar";
+import AgentAvatar, { type GifState } from "./AgentAvatar";
 import * as TypingQueue from "@/lib/typingQueue";
 
 // ── Typewriter effect (serialized global queue) ──────────────────
 // Only ONE message across all panels types at a time.
 function TypewriterText({ id, text, speed }: { id: string; text: string; speed: number }) {
-  const activeId = useSyncExternalStore(TypingQueue.subscribe, TypingQueue.getActiveId);
-  const isPaused = useSyncExternalStore(TypingQueue.subscribe, TypingQueue.getPaused);
+  const activeId = useSyncExternalStore(TypingQueue.subscribe, TypingQueue.getActiveId, () => null);
+  const isPaused = useSyncExternalStore(TypingQueue.subscribe, TypingQueue.getPaused, () => false);
   const [displayed, setDisplayed] = useState("");
   const enqueuedRef = useRef(false);
 
@@ -143,6 +144,23 @@ const STATUS_LABELS: Record<AgentStatus, string> = {
   done:     "✓ DONE",
 };
 
+// Derive GIF state from status + last tool call (for prosecution/defense only)
+function deriveGifState(status: AgentStatus, messages: Message[]): GifState {
+  if (status === "idle") return "idle";
+  if (status === "resting" || status === "done") return "resting";
+  if (status === "speaking") return "speaking";
+
+  // status === "thinking" — check last message for tool type
+  const lastToolMsg = [...messages].reverse().find((m) => m.type === "tool_call" && m.toolCall);
+  if (lastToolMsg?.toolCall) {
+    const tool = lastToolMsg.toolCall.tool;
+    if (tool === "file_motion" || tool === "cross_examine") return "objecting";
+    if (tool === "tavily_search" || tool === "lookup_precedent" || tool === "request_evidence") return "researching";
+  }
+
+  return "speaking"; // thinking, no tool or other — about to speak
+}
+
 interface AgentPanelProps {
   role:            AgentRole;
   status?:         AgentStatus;
@@ -265,6 +283,8 @@ export default function AgentPanel({
   textSpeed = 15,
 }: AgentPanelProps) {
   const cfg = ROLE_CONFIG[role];
+  const gifState = useMemo(() => deriveGifState(status, messages), [status, messages]);
+  const showAvatar = role === "prosecution" || role === "defense";
 
   const badgeClass =
     status === "thinking" ? cfg.badgeThinking :
@@ -279,8 +299,8 @@ export default function AgentPanel({
     >
       {/* ── Panel header ── */}
       <div className={`flex items-center justify-between px-4 py-2.5 ${cfg.headerBg} border-b ${cfg.headerBorder}`}>
-        <div className="flex items-center gap-2">
-          <span className="text-base">{cfg.icon}</span>
+        <div className="flex shrink-0 items-center gap-2">
+          {!showAvatar && <span className="text-base">{cfg.icon}</span>}
           <span className={`text-xs font-bold tracking-widest ${cfg.nameplateColor}`}>{cfg.label}</span>
         </div>
         <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-semibold tracking-wider ${badgeClass}`}>
@@ -288,6 +308,13 @@ export default function AgentPanel({
           {status === "thinking" && <span className="cursor-blink ml-0.5">_</span>}
         </span>
       </div>
+
+      {/* ── Avatar row (Prosecution & Defense only) ── */}
+      {showAvatar && (
+        <div className={`flex justify-center py-2 border-b ${cfg.headerBorder} bg-[#0a0a12]`}>
+          <AgentAvatar role={role} gifState={gifState} />
+        </div>
+      )}
 
       {/* ── Model badge ── */}
       <div className={`px-4 py-1.5 flex items-center justify-between border-b ${cfg.headerBorder} bg-[#0a0a12]`}>

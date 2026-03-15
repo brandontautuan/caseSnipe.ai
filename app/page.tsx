@@ -31,7 +31,7 @@ export default function Home() {
   const [prosecutionModel, setProsecutionModel]   = useState(DEFAULT_PROSECUTION_MODEL);
   const [defenseModel, setDefenseModel]           = useState(DEFAULT_DEFENSE_MODEL);
   const [judgeModel, setJudgeModel]               = useState(DEFAULT_JUDGE_MODEL);
-  const [ragMode, setRagMode]                     = useState(false); // RAG precedent search — default off for demo
+  const [ragMode, setRagMode]                     = useState(true); // RAG precedent search — default on
   const maxRounds = 4;
   const [textSpeed, setTextSpeed] = useState(15); // ms per char
   const currentCase = CASES.find((c) => c.id === selectedCase);
@@ -120,7 +120,7 @@ export default function Home() {
   const isDone     = isVerdict || state.status === "done" || state.status === "error";
 
   // ── Wait for verdict text to finish typing before showing game over ──────
-  const activeTypingId = useSyncExternalStore(TypingQueue.subscribe, TypingQueue.getActiveId);
+  const activeTypingId = useSyncExternalStore(TypingQueue.subscribe, TypingQueue.getActiveId, () => null);
 
   // Fire pending banner the moment its message becomes the active typewriter
   useEffect(() => {
@@ -170,7 +170,7 @@ export default function Home() {
     state.status === "done"        ? "verdict"     as const : "waiting" as const;
 
   // ── Pause / resume ───────────────────────────────────────────────────────
-  const isPaused = useSyncExternalStore(TypingQueue.subscribe, TypingQueue.getPaused);
+  const isPaused = useSyncExternalStore(TypingQueue.subscribe, TypingQueue.getPaused, () => false);
   const handleTogglePause = () => {
     if (isPaused) {
       TypingQueue.resume();
