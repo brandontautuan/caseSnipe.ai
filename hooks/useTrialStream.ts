@@ -121,20 +121,6 @@ export function useTrialStream() {
       switch (evt.type) {
         case "briefing": {
           next.status = "in_progress";
-          const briefText = evt.content ?? "";
-          const firstSentence = briefText.split(/[.\n]/)[0]?.trim() ?? briefText.slice(0, 120);
-          const judgeIntro =
-            `COURT WILL COME TO ORDER.\n\n` +
-            `The matter before this court: ${firstSentence}.\n\n` +
-            `Both counsel have received the full case record. ` +
-            `Prosecution will open first, followed by the defense. ` +
-            `This court expects arguments grounded in evidence and law. ` +
-            `Counsel — you may proceed.`;
-          next.judgeMessages = [
-            ...prev.judgeMessages,
-            { id: uid(), type: "argument", content: judgeIntro, timestamp: fmtTime(evt.timestamp) },
-          ];
-          next.judgeStatus = "speaking";
           next.trialEvents = [
             ...prev.trialEvents,
             { id: evtId(), type: "turn_change", description: "Trial commenced — case briefing distributed", timestamp: fmtTime(evt.timestamp) },

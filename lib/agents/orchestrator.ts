@@ -173,23 +173,45 @@ export async function runTrial(config: TrialConfig): Promise<TrialResult> {
   const briefing = formatCaseBriefing(legalCase);
   emit({ type: "briefing", content: briefing });
 
+  // ── Judge opens the trial ─────────────────────────────────────────────────
+  emit({ type: "turn_start", side: "judge", round: 0, content: "Judge opening the trial" });
+  const judgeOpenLLM = createModel(judgeModel, { temperature: 0.3 });
+  let judgeOpening = `COURT WILL COME TO ORDER. The matter before this court is ${legalCase.title}. Prosecution will proceed first.`;
+  try {
+    const openingResponse = await judgeOpenLLM.invoke([
+      new SystemMessage(JUDGE_SYSTEM_PROMPT),
+      new HumanMessage(
+        `Open this trial in exactly 3 sentences:\n` +
+        `1. "COURT WILL COME TO ORDER." — state the case name and the charges against the defendant.\n` +
+        `2. State the central legal question this court must decide.\n` +
+        `3. Instruct prosecution to proceed.\n\n` +
+        `Case record:\n${briefing}`
+      ),
+    ]);
+    judgeOpening = typeof openingResponse.content === "string"
+      ? openingResponse.content.trim()
+      : judgeOpening;
+  } catch { /* use default */ }
+  emit({ type: "argument", side: "judge", round: 0, content: judgeOpening });
+
   // Shared conversation history (both agents see the same transcript)
   const sharedHistory: BaseMessage[] = [
     new SystemMessage(`CASE BRIEFING:\n${briefing}`),
   ];
 
-  const prosecutionSummaries: string[] = [];
-  const defenseSummaries: string[] = [];
+  const prosecutionFullArgs: string[] = []; // full argument text passed to defense each round
+  const defenseFullArgs: string[] = [];      // full argument text passed to prosecution each round
 
   // ── Turn-taking loop ─────────────────────────────────────────────────────
   for (let round = 1; round <= maxRounds; round++) {
     // ── Prosecution turn ──
     emit({ type: "turn_start", side: "prosecution", round, content: `Prosecution begins round ${round}` });
 
+    const lastDefenseArg = defenseFullArgs[defenseFullArgs.length - 1] ?? "";
     const pInput =
       round === 1
-        ? `Round ${round} of ${maxRounds}. The court is in session. Prosecution — you have the floor. Present your opening argument.`
-        : `Round ${round} of ${maxRounds}. Defense has just argued: "${defenseSummaries[defenseSummaries.length - 1]}". Prosecution — the floor is yours. Rebut and press your case.`;
+        ? `Round ${round} of ${maxRounds}. The judge has opened the trial. Prosecution — present your first argument. Reference specific evidence from the case record.`
+        : `Round ${round} of ${maxRounds}. Defense just argued:\n\n"${lastDefenseArg}"\n\nProsecution — counter that argument directly, then press your case.`;
 
     let prosecutionResult;
     try {
@@ -206,13 +228,14 @@ export async function runTrial(config: TrialConfig): Promise<TrialResult> {
     const { events: pEvents, summary: pSummary } = parseAgentMessages(pNewMessages, "prosecution", round);
 
     for (const e of pEvents) { transcript.push(e); onEvent(e); }
-    prosecutionSummaries.push(pSummary);
-    sharedHistory.push(new AIMessage(pSummary));
+    const pFullArg = pEvents.filter(e => e.type === "argument").map(e => e.content).join(" ").trim() || pSummary;
+    prosecutionFullArgs.push(pFullArg);
+    sharedHistory.push(new AIMessage(pFullArg));
 
     // ── Defense turn ──
     emit({ type: "turn_start", side: "defense", round, content: `Defense begins round ${round}` });
 
-    const dInput = `Round ${round} of ${maxRounds}. Prosecution has just argued: "${pSummary}". Defense — the floor is yours. Answer them.`;
+    const dInput = `Round ${round} of ${maxRounds}. Prosecution just argued:\n\n"${pFullArg}"\n\nDefense — respond directly to that argument. Challenge it specifically, then make your own point.`;
 
     let defenseResult;
     try {
@@ -229,8 +252,9 @@ export async function runTrial(config: TrialConfig): Promise<TrialResult> {
     const { events: dEvents, summary: dSummary } = parseAgentMessages(dNewMessages, "defense", round);
 
     for (const e of dEvents) { transcript.push(e); onEvent(e); }
-    defenseSummaries.push(dSummary);
-    sharedHistory.push(new AIMessage(dSummary));
+    const dFullArg = dEvents.filter(e => e.type === "argument").map(e => e.content).join(" ").trim() || dSummary;
+    defenseFullArgs.push(dFullArg);
+    sharedHistory.push(new AIMessage(dFullArg));
   }
 
   // ── Judge verdict ────────────────────────────────────────────────────────
