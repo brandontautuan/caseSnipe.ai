@@ -29,3 +29,21 @@ export interface AgentTurnOutput {
   response: string;
   toolCalls?: Array<{ name: string; args: unknown }>;
 }
+
+export interface TrialTranscript {
+  caseBriefing: CaseBriefing;
+  prosecutionTurns: AgentTurnOutput[];
+  defenseTurns: AgentTurnOutput[];
+}
+
+export interface JudgeInput {
+  transcript: TrialTranscript;
+}
+
+export interface VerdictOutput {
+  ruling: string;
+  reasoning: string;
+  confidence: "high" | "medium" | "low";
+  sentence?: string;
+  damages?: string;
+}

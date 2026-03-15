@@ -38,3 +38,33 @@ export function createCaseAgentLLM() {
     temperature: 0.3,
   });
 }
+
+export const createNebiusLLM = createCaseAgentLLM;
+
+/** Judge-specific LLM; uses JUDGE_MODEL env var if set, else same as case agent */
+export function createJudgeLLM() {
+  const { nebiusApiKey, openRouterApiKey } = getConfig();
+  const model =
+    process.env.JUDGE_MODEL ||
+    (useOpenRouter() ? OPENROUTER_MODEL : NEBIUS_MODEL);
+
+  if (useOpenRouter()) {
+    return new ChatOpenAI({
+      model,
+      configuration: {
+        baseURL: OPENROUTER_BASE_URL,
+        apiKey: openRouterApiKey,
+      },
+      temperature: 0.3,
+    });
+  }
+
+  return new ChatOpenAI({
+    model,
+    configuration: {
+      baseURL: NEBIUS_BASE_URL,
+      apiKey: nebiusApiKey,
+    },
+    temperature: 0.3,
+  });
+}
