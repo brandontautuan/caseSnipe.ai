@@ -1,6 +1,63 @@
 "use client";
 
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import BenchmarkBar from "./BenchmarkBar";
+import * as TypingQueue from "@/lib/typingQueue";
+
+// ── Typewriter effect (serialized global queue) ──────────────────
+// Only ONE message across all panels types at a time.
+function TypewriterText({ id, text, speed }: { id: string; text: string; speed: number }) {
+  const activeId = useSyncExternalStore(TypingQueue.subscribe, TypingQueue.getActiveId);
+  const [displayed, setDisplayed] = useState("");
+  const enqueuedRef = useRef(false);
+
+  // Register with the queue once on mount
+  useEffect(() => {
+    if (enqueuedRef.current) return;
+    enqueuedRef.current = true;
+    if (speed === 0) {
+      setDisplayed(text);
+      TypingQueue.complete(id);
+    } else {
+      TypingQueue.enqueue(id);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Show full text once marked done
+  const done = TypingQueue.isDone(id);
+  useEffect(() => {
+    if (done) setDisplayed(text);
+  }, [done, text]);
+
+  // Animate when this message is at the front of the queue
+  useEffect(() => {
+    if (speed === 0 || activeId !== id) return;
+    let idx = displayed.length;
+    const interval = setInterval(() => {
+      idx += 1;
+      setDisplayed(text.slice(0, idx));
+      if (idx >= text.length) {
+        clearInterval(interval);
+        TypingQueue.complete(id);
+      }
+    }, speed);
+    return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeId, id, speed]);
+
+  // Waiting — show cursor placeholder until turn arrives
+  if (!done && activeId !== id && displayed.length === 0) {
+    return <span className="opacity-30">▌</span>;
+  }
+
+  return (
+    <>
+      {displayed}
+      {activeId === id && <span className="animate-pulse ml-px">▌</span>}
+    </>
+  );
+}
 
 export type AgentRole   = "prosecution" | "defense" | "judge";
 export type AgentStatus = "idle" | "thinking" | "speaking" | "resting" | "done";
@@ -92,6 +149,7 @@ interface AgentPanelProps {
   motionsCount?:   number;
   evidenceCount?:  number;
   showBenchmark?:  boolean;
+  textSpeed?:      number; // ms per character; 0 = instant
 }
 
 // ── Tool call display ───────────────────────────────────────────
@@ -127,7 +185,7 @@ function ToolCallBubble({ toolCall, role }: { toolCall: ToolCall; role: AgentRol
 }
 
 // ── Single message item ─────────────────────────────────────────
-function MessageItem({ msg, role }: { msg: Message; role: AgentRole }) {
+function MessageItem({ msg, role, textSpeed = 0 }: { msg: Message; role: AgentRole; textSpeed?: number }) {
   const cfg = ROLE_CONFIG[role];
 
   if (msg.type === "tool_call" && msg.toolCall) {
@@ -186,7 +244,7 @@ function MessageItem({ msg, role }: { msg: Message; role: AgentRole }) {
       {/* Content */}
       <div className="px-3 py-2">
         <p className="text-[11px] leading-relaxed" style={{ color: "var(--aa-parchment)" }}>
-          {msg.content}
+          <TypewriterText id={msg.id} text={msg.content} speed={textSpeed} />
         </p>
       </div>
     </div>
@@ -202,6 +260,7 @@ export default function AgentPanel({
   motionsCount = 0,
   evidenceCount = 0,
   showBenchmark = true,
+  textSpeed = 15,
 }: AgentPanelProps) {
   const cfg = ROLE_CONFIG[role];
 
@@ -260,7 +319,7 @@ export default function AgentPanel({
           </div>
         ) : (
           messages.map((msg) => (
-            <MessageItem key={msg.id} msg={msg} role={role} />
+            <MessageItem key={msg.id} msg={msg} role={role} textSpeed={textSpeed} />
           ))
         )}
       </div>

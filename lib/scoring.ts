@@ -109,6 +109,8 @@ export function scoreTrialEvents(events: TrialEvent[], verdict: string): TrialSc
   const verdictFavors = parseVerdictFavor(verdict);
 
   const winner: TrialScore["winner"] =
+    verdictFavors === "prosecution" ? "prosecution" :
+    verdictFavors === "defense"     ? "defense"     :
     Math.abs(prosecution.total - defense.total) <= 5 ? "draw" :
     prosecution.total > defense.total ? "prosecution" : "defense";
 

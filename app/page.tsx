@@ -8,6 +8,7 @@ import JudgePanel from "@/components/JudgePanel";
 import GameOverScreen from "@/components/GameOverScreen";
 import ObjectionBanner, { type BannerWord, type BannerSide } from "@/components/ObjectionBanner";
 import { useTrialStream } from "@/hooks/useTrialStream";
+import { resetQueue } from "@/lib/typingQueue";
 import { CASES, DEMO_CASES } from "@/lib/cases";
 import { DEFAULT_PROSECUTION_MODEL, DEFAULT_DEFENSE_MODEL, DEFAULT_JUDGE_MODEL } from "@/lib/agents/modelList";
 
@@ -30,7 +31,8 @@ export default function Home() {
   const [prosecutionModel, setProsecutionModel]   = useState(DEFAULT_PROSECUTION_MODEL);
   const [defenseModel, setDefenseModel]           = useState(DEFAULT_DEFENSE_MODEL);
   const [judgeModel, setJudgeModel]               = useState(DEFAULT_JUDGE_MODEL);
-  const maxRounds = 2;
+  const maxRounds = 4;
+  const [textSpeed, setTextSpeed] = useState(15); // ms per char
 
   // ── Banner state ──────────────────────────────────────────────
   const [banner, setBanner] = useState<BannerState>({
@@ -84,11 +86,12 @@ export default function Home() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.prosecutionMessages.length, state.defenseMessages.length]);
 
-  // Reset message counters on trial reset
+  // Reset message counters and typing queue on trial reset
   useEffect(() => {
     if (state.status === "idle") {
       prevProsCountRef.current = 0;
       prevDefCountRef.current  = 0;
+      resetQueue();
     }
   }, [state.status]);
 
@@ -97,6 +100,7 @@ export default function Home() {
   const isDone     = isVerdict || state.status === "done" || state.status === "error";
 
   const handleBeginTrial = () => {
+    resetQueue();
     const legalCase = CASES.find((c) => c.id === selectedCase);
     startTrial(
       { caseId: selectedCase, prosecutionModel, defenseModel, judgeModel, maxRounds },
@@ -158,6 +162,19 @@ export default function Home() {
         onReset={reset}
       />
 
+      {/* ── Text speed control ── */}
+      <div className="flex items-center gap-2 px-4 py-1 border-b border-[#1e1e2e] bg-[#0a0a12]">
+        <span className="text-[9px] font-mono text-slate-600 uppercase tracking-widest shrink-0">Text Speed</span>
+        <input
+          type="range" min={0} max={50} step={5} value={textSpeed}
+          onChange={(e) => setTextSpeed(Number(e.target.value))}
+          className="w-24 accent-[#f5c518] h-1"
+        />
+        <span className="text-[9px] font-mono text-slate-500 w-14">
+          {textSpeed === 0 ? "Instant" : textSpeed <= 10 ? "Fast" : textSpeed <= 25 ? "Normal" : "Slow"}
+        </span>
+      </div>
+
       <div className="flex flex-1 gap-3 p-3 min-h-0">
         <div className="flex-1 min-w-0">
           <AgentPanel
@@ -167,6 +184,7 @@ export default function Home() {
             messages={state.prosecutionMessages}
             motionsCount={state.prosecutionMotions}
             evidenceCount={state.prosecutionEvidence}
+            textSpeed={textSpeed}
           />
         </div>
 
@@ -190,6 +208,7 @@ export default function Home() {
             messages={state.defenseMessages}
             motionsCount={state.defenseMotions}
             evidenceCount={state.defenseEvidence}
+            textSpeed={textSpeed}
           />
         </div>
       </div>

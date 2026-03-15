@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import AgentPanel from "./AgentPanel";
 import type { AgentStatus, Message } from "./AgentPanel";
 
@@ -37,6 +38,22 @@ const EVENT_COLORS: Record<TrialEvent["type"], string> = {
   turn_change:       "text-slate-500",
 };
 
+type TabId = "all" | "evidence" | "motions" | "objections";
+
+const TABS: { id: TabId; label: string }[] = [
+  { id: "all",        label: "ALL" },
+  { id: "evidence",   label: "EVIDENCE" },
+  { id: "motions",    label: "MOTIONS" },
+  { id: "objections", label: "OBJECTIONS" },
+];
+
+const TAB_FILTER: Record<TabId, TrialEvent["type"][]> = {
+  all:        ["motion_filed", "evidence_admitted", "objection", "ruling", "turn_change"],
+  evidence:   ["evidence_admitted"],
+  motions:    ["motion_filed", "ruling"],
+  objections: ["objection"],
+};
+
 export default function JudgePanel({
   status    = "idle",
   model     = "—",
@@ -46,6 +63,9 @@ export default function JudgePanel({
   maxRounds = 3,
   verdict   = "",
 }: JudgePanelProps) {
+  const [activeTab, setActiveTab] = useState<TabId>("all");
+  const filteredEvents = events.filter((e) => TAB_FILTER[activeTab].includes(e.type));
+
   return (
     <div className="flex flex-col h-full gap-2">
 
@@ -91,27 +111,52 @@ export default function JudgePanel({
       >
         {/* Header */}
         <div
-          className="flex items-center justify-between px-3 py-2 border-b border-[#c9a227]/15 shrink-0"
+          className="shrink-0 border-b border-[#c9a227]/15"
           style={{ background: "rgba(201,162,39,0.05)" }}
         >
-          <div className="flex items-center gap-2">
-            <span className="text-[#c9a227]/50 text-xs">📜</span>
-            <span className="text-[9px] font-bold tracking-[0.2em] text-[#c9a227]/60">COURT RECORD</span>
+          <div className="flex items-center justify-between px-3 py-2">
+            <div className="flex items-center gap-2">
+              <span className="text-[#c9a227]/50 text-xs">📜</span>
+              <span className="text-[9px] font-bold tracking-[0.2em] text-[#c9a227]/60">COURT RECORD</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[9px] text-slate-600 tracking-wider">ROUND</span>
+              <span className="text-[9px] text-slate-300 font-bold">{round}/{maxRounds}</span>
+            </div>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-[9px] text-slate-600 tracking-wider">ROUND</span>
-            <span className="text-[9px] text-slate-300 font-bold">{round}/{maxRounds}</span>
+          {/* Tabs */}
+          <div className="flex gap-0 border-t border-[#c9a227]/10">
+            {TABS.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-3 py-1.5 text-[8px] font-bold tracking-[0.15em] transition-colors ${
+                  activeTab === tab.id
+                    ? "text-[#c9a227] border-b border-[#c9a227]"
+                    : "text-slate-600 hover:text-slate-400"
+                }`}
+              >
+                {tab.label}
+                {tab.id !== "all" && (
+                  <span className="ml-1 opacity-60">
+                    ({events.filter((e) => TAB_FILTER[tab.id].includes(e.type)).length})
+                  </span>
+                )}
+              </button>
+            ))}
           </div>
         </div>
 
         {/* Event list */}
         <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1.5">
-          {events.length === 0 ? (
+          {filteredEvents.length === 0 ? (
             <div className="flex items-center justify-center h-full">
-              <p className="text-[10px] text-slate-700 italic tracking-wider">No events recorded</p>
+              <p className="text-[10px] text-slate-700 italic tracking-wider">
+                {events.length === 0 ? "No events recorded" : "No entries in this category"}
+              </p>
             </div>
           ) : (
-            events.map((event) => (
+            filteredEvents.map((event) => (
               <div key={event.id} className="flex items-start gap-2">
                 <span className="text-xs mt-0.5 shrink-0">{EVENT_ICONS[event.type]}</span>
                 <div className="flex-1 min-w-0">
