@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "build:precedent": "tsx scripts/build-precedent-index.ts"
   },
   "dependencies": {
     "@langchain/community": "^1.1.23",
@@ -14,6 +15,7 @@
     "@langchain/openai": "^1.2.13",
     "@langchain/openrouter": "^0.1.6",
     "@langchain/tavily": "^1.2.0",
+    "hf-dataset": "^0.1.0",
     "langchain": "^1.2.32",
     "next": "14.2.18",
     "openai": "^6.29.0",
@@ -25,10 +27,12 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "autoprefixer": "^10.4.20",
+    "dotenv": "^17.3.1",
     "eslint": "^8",
     "eslint-config-next": "14.2.18",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }

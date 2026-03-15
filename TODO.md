@@ -11,7 +11,7 @@ Based on [CLAUDE.md](./CLAUDE.md). Check off items as they're completed.
 - [x] **Defendant Agent** — AgentExecutor (createReactAgent), shared tools, argues for acquittal
 - [x] **Judge Agent** — LLMChain, full transcript → structured verdict (ruling, reasoning, confidence)
 - [x] **tavily_search** — Real web search for legal research
-- [ ] **lookup_precedent** — RAG over 8k case summaries (keyword stubs for now)
+- [x] **lookup_precedent** — RAG over 8k case summaries (MemoryVectorStore; toggle in TopBar)
 - [x] **request_evidence** — Evidence simulator (real — uses cases bank)
 - [x] **file_motion, cross_examine, rest_case** — Legal action tools
 
@@ -19,7 +19,7 @@ Based on [CLAUDE.md](./CLAUDE.md). Check off items as they're completed.
 
 ## Backend — Data & Orchestration
 
-- [ ] **RAG precedent engine** — HuggingFace dataset, FAISS index, wire to `lookup_precedent`
+- [x] **RAG precedent engine** — HuggingFace dataset, MemoryVectorStore index, wire to `lookup_precedent`
 - [x] **Cases bank** — 20+ curated cases (easy / medium / hard tiers)
 - [x] **Evidence simulator** — Realistic evidence per case for `request_evidence`
 - [x] **Turn-taking orchestration** — Orchestrator: Case → Prosecution → Defense → (repeat) → Judge

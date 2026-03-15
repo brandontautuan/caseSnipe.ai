@@ -19,6 +19,7 @@ export interface TrialConfig {
   defenseModel: string;
   judgeModel: string;
   maxRounds?: number;
+  ragMode?: boolean;
   onEvent?: (event: TrialEvent) => void;
 }
 
@@ -135,6 +136,7 @@ export async function runTrial(config: TrialConfig): Promise<TrialResult> {
     defenseModel,
     judgeModel,
     maxRounds = 3,
+    ragMode = false,
     onEvent = () => {},
   } = config;
 
@@ -150,7 +152,7 @@ export async function runTrial(config: TrialConfig): Promise<TrialResult> {
   };
 
   // ── Build tools & models ─────────────────────────────────────────────────
-  const tools = buildTools(caseId);
+  const tools = buildTools(caseId, ragMode);
   const prosecutionLLM = createModel(prosecutionModel, { temperature: 0.7 });
   const defenseLLM     = createModel(defenseModel,     { temperature: 0.7 });
 

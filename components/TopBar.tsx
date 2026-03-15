@@ -22,6 +22,8 @@ interface TopBarProps {
   onProsecutionModelChange?:(m: string) => void;
   onDefenseModelChange?:    (m: string) => void;
   onJudgeModelChange?:      (m: string) => void;
+  ragMode?:                 boolean;
+  onRagModeChange?:         (v: boolean) => void;
   onBeginTrial?:            () => void;
   onReset?:                 () => void;
   onOpenConfig?:            () => void;
@@ -109,6 +111,8 @@ export default function TopBar({
   onProsecutionModelChange,
   onDefenseModelChange,
   onJudgeModelChange,
+  ragMode = false,
+  onRagModeChange,
   onBeginTrial,
   onReset,
   onOpenConfig,
@@ -178,6 +182,21 @@ export default function TopBar({
           <ModelSelect label="Prosecution" value={prosecutionModel} onChange={onProsecutionModelChange ?? (() => {})} accentColor="red" />
           <ModelSelect label="Judge"       value={judgeModel}       onChange={onJudgeModelChange       ?? (() => {})} accentColor="yellow" />
           <ModelSelect label="Defense"     value={defenseModel}     onChange={onDefenseModelChange     ?? (() => {})} accentColor="blue" />
+
+          {/* RAG Mode toggle — semantic precedent search when on */}
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[9px] text-slate-500 uppercase tracking-wider">RAG</span>
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={ragMode}
+                onChange={(e) => onRagModeChange?.(e.target.checked)}
+                disabled={isRunning}
+                className="w-3 h-3 rounded accent-[#c9a227] disabled:opacity-40"
+              />
+              <span className="text-[10px] font-mono text-slate-400">{ragMode ? "On" : "Off"}</span>
+            </label>
+          </div>
 
           <div className="flex items-center gap-2 ml-2">
             <button

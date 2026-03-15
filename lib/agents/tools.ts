@@ -5,7 +5,9 @@
 
 import { DynamicStructuredTool } from "@langchain/core/tools";
 import { z } from "zod";
+import { OpenAIEmbeddings } from "@langchain/openai";
 import { requestEvidence } from "../evidence";
+import { getPrecedentStore } from "../rag/precedent-store";
 
 // Sentinel value returned by rest_case — orchestrator watches for this
 export const REST_CASE_SIGNAL = "__REST_CASE__";
@@ -13,8 +15,9 @@ export const REST_CASE_SIGNAL = "__REST_CASE__";
 /**
  * Build the full tool suite bound to a specific case ID.
  * Call once per agent per trial.
+ * @param ragMode When true, lookup_precedent uses RAG; when false, uses keyword stubs.
  */
-export function buildTools(caseId: string) {
+export function buildTools(caseId: string, ragMode = false) {
   const tavilySearch = new DynamicStructuredTool({
     name: "tavily_search",
     description:
@@ -80,30 +83,51 @@ export function buildTools(caseId: string) {
         .describe("Legal concept or fact pattern to search — e.g. 'self-defense reasonable force'"),
     }),
     func: async ({ query }) => {
-      // Phase 2B: stub — Person 2 will wire FAISS/HuggingFace RAG here.
-      // Returns plausible placeholder precedents based on the query.
-      const stubs: Record<string, string> = {
-        "self-defense":
-          "People v. Humphrey (1996): jury must consider defendant's perspective given history of abuse. | State v. Norman (1989): subjective fear test — defendant's belief of imminent harm need not be objectively reasonable in all jurisdictions.",
-        "reasonable doubt":
-          "In re Winship (1970, SCOTUS): prosecution must prove every element beyond reasonable doubt. | Jackson v. Virginia (1979): rational trier of fact standard for reviewing sufficiency.",
-        burglary:
-          "People v. Davis (2014): intent may be inferred from circumstantial evidence including manner of entry. | People v. Gauze (1975): burglary requires entry of a structure not one's own.",
-        fraud:
-          "United States v. Skilling (2010): honest services fraud requires bribery or kickback scheme. | Matrixx Initiatives v. Siracusano (2011): materiality in securities fraud is fact-specific.",
-        "wrongful termination":
-          "Tameny v. Atlantic Richfield (1980): termination in violation of public policy is actionable. | Foley v. Interactive Data Corp (1988): implied covenant of good faith applies in employment.",
-        "fourth amendment":
-          "Kentucky v. King (2011): exigent circumstances exception valid unless police manufactured emergency. | Katz v. United States (1967): reasonable expectation of privacy standard.",
-      };
-
-      const q = query.toLowerCase();
-      for (const [key, cases] of Object.entries(stubs)) {
-        if (q.includes(key)) {
-          return `Precedents found for "${query}":\n${cases}`;
+      if (!ragMode) {
+        // Stub path when RAG mode off
+        const stubs: Record<string, string> = {
+          "self-defense":
+            "People v. Humphrey (1996): jury must consider defendant's perspective given history of abuse. | State v. Norman (1989): subjective fear test — defendant's belief of imminent harm need not be objectively reasonable in all jurisdictions.",
+          "reasonable doubt":
+            "In re Winship (1970, SCOTUS): prosecution must prove every element beyond reasonable doubt. | Jackson v. Virginia (1979): rational trier of fact standard for reviewing sufficiency.",
+          burglary:
+            "People v. Davis (2014): intent may be inferred from circumstantial evidence including manner of entry. | People v. Gauze (1975): burglary requires entry of a structure not one's own.",
+          fraud:
+            "United States v. Skilling (2010): honest services fraud requires bribery or kickback scheme. | Matrixx Initiatives v. Siracusano (2011): materiality in securities fraud is fact-specific.",
+          "wrongful termination":
+            "Tameny v. Atlantic Richfield (1980): termination in violation of public policy is actionable. | Foley v. Interactive Data Corp (1988): implied covenant of good faith applies in employment.",
+          "fourth amendment":
+            "Kentucky v. King (2011): exigent circumstances exception valid unless police manufactured emergency. | Katz v. United States (1967): reasonable expectation of privacy standard.",
+        };
+        const q = query.toLowerCase();
+        for (const [key, cases] of Object.entries(stubs)) {
+          if (q.includes(key)) {
+            return `Precedents found for "${query}":\n${cases}`;
+          }
         }
+        return `No direct precedents indexed for "${query}". Consider rephrasing or using tavily_search for case law research.`;
       }
-      return `No direct precedents indexed for "${query}". Consider rephrasing or using tavily_search for case law research. [FAISS RAG will be active after Person 2 integration]`;
+
+      // RAG path: semantic search over precedent index
+      const apiKey = process.env.OPENROUTER_API_KEY?.trim();
+      if (!apiKey) {
+        return "Precedent index requires OPENROUTER_API_KEY. Add it to .env.local.";
+      }
+      const embeddings = new OpenAIEmbeddings({
+        model: "openai/text-embedding-3-small", // OpenRouter model path
+        apiKey,
+        configuration: { baseURL: "https://openrouter.ai/api/v1" },
+      });
+      const store = await getPrecedentStore(embeddings);
+      if (!store) {
+        return "Precedent index not built. Run `npm run build:precedent`.";
+      }
+      const docs = await store.similaritySearch(query, 3);
+      if (docs.length === 0) {
+        return `No precedents found for "${query}". Consider rephrasing or using tavily_search for case law research.`;
+      }
+      const lines = docs.map((d, i) => `${i + 1}. ${d.pageContent.slice(0, 500)}${d.pageContent.length > 500 ? "..." : ""}`);
+      return `Precedents found for "${query}":\n\n${lines.join("\n\n")}`;
     },
   });
 

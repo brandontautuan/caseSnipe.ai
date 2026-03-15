@@ -31,6 +31,7 @@ export default function Home() {
   const [prosecutionModel, setProsecutionModel]   = useState(DEFAULT_PROSECUTION_MODEL);
   const [defenseModel, setDefenseModel]           = useState(DEFAULT_DEFENSE_MODEL);
   const [judgeModel, setJudgeModel]               = useState(DEFAULT_JUDGE_MODEL);
+  const [ragMode, setRagMode]                     = useState(false); // RAG precedent search — default off for demo
   const maxRounds = 4;
   const [textSpeed, setTextSpeed] = useState(15); // ms per char
   const currentCase = CASES.find((c) => c.id === selectedCase);
@@ -157,7 +158,7 @@ export default function Home() {
     TypingQueue.resetQueue();
     const legalCase = CASES.find((c) => c.id === selectedCase);
     startTrial(
-      { caseId: selectedCase, prosecutionModel, defenseModel, judgeModel, maxRounds },
+      { caseId: selectedCase, prosecutionModel, defenseModel, judgeModel, maxRounds, ragMode },
       legalCase?.title ?? selectedCase
     );
   };
@@ -226,6 +227,8 @@ export default function Home() {
         onProsecutionModelChange={setProsecutionModel}
         onDefenseModelChange={setDefenseModel}
         onJudgeModelChange={setJudgeModel}
+        ragMode={ragMode}
+        onRagModeChange={setRagMode}
         onBeginTrial={handleBeginTrial}
         onReset={reset}
         isPaused={isPaused}
