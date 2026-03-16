@@ -9,8 +9,21 @@ import GameOverScreen from "@/components/GameOverScreen";
 import ObjectionBanner, { type BannerWord, type BannerSide } from "@/components/ObjectionBanner";
 import { useTrialStream } from "@/hooks/useTrialStream";
 import * as TypingQueue from "@/lib/typingQueue";
-import { CASES, DEMO_CASES } from "@/lib/cases";
+import { CASES, DEMO_CASES, type EvidenceItem } from "@/lib/cases";
 import { DEFAULT_PROSECUTION_MODEL, DEFAULT_DEFENSE_MODEL, DEFAULT_JUDGE_MODEL } from "@/lib/agents/modelList";
+
+/** Extract search terms from evidence for highlighting references in arguments */
+function getEvidenceSearchTerms(evidence: EvidenceItem[]): string[] {
+  const terms = new Set<string>();
+  for (const e of evidence) {
+    terms.add(e.name);
+    const parts = e.name.split(/\s*[—–-]\s*/);
+    if (parts[0]?.trim()) terms.add(parts[0].trim());
+    const exhibitMatch = e.name.match(/Exhibit\s+[A-Za-z0-9]+/i);
+    if (exhibitMatch) terms.add(exhibitMatch[0]);
+  }
+  return Array.from(terms).filter((t) => t.length > 2);
+}
 
 interface BannerState {
   visible: boolean;
@@ -279,6 +292,7 @@ export default function Home() {
             motionsCount={state.prosecutionMotions}
             evidenceCount={state.prosecutionEvidence}
             textSpeed={textSpeed}
+            evidenceNames={getEvidenceSearchTerms(currentCase?.availableEvidence ?? [])}
           />
         </div>
 
@@ -305,6 +319,7 @@ export default function Home() {
             motionsCount={state.defenseMotions}
             evidenceCount={state.defenseEvidence}
             textSpeed={textSpeed}
+            evidenceNames={getEvidenceSearchTerms(currentCase?.availableEvidence ?? [])}
           />
         </div>
       </div>

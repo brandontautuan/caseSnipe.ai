@@ -95,6 +95,16 @@ body {
 }
 .aa-evidence-flip { animation: evidence-flip 0.35s ease-out forwards; }
 
+/* ── Evidence highlight pulse (draws attention when evidence is used) ─── */
+@keyframes evidence-highlight-pulse {
+  0%,100% { box-shadow: 0 0 0 0 transparent; }
+  30%     { box-shadow: 0 0 14px 3px rgba(201,162,39,0.35); }
+  60%     { box-shadow: 0 0 8px 1px rgba(201,162,39,0.2); }
+}
+.aa-evidence-highlight {
+  animation: evidence-highlight-pulse 1.2s ease-out 0.4s forwards;
+}
+
 /* ── Turn banner slide-in ─────────────────────────────────────── */
 @keyframes banner-slide {
   from { transform: translateX(-110%); opacity: 0; }

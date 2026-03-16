@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore, useMemo } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, useMemo, type ReactNode } from "react";
 import BenchmarkBar from "./BenchmarkBar";
 import AgentAvatar, { type GifState } from "./AgentAvatar";
 import * as TypingQueue from "@/lib/typingQueue";
@@ -175,6 +175,7 @@ interface AgentPanelProps {
   evidenceCount?:  number;
   showBenchmark?:  boolean;
   textSpeed?:      number; // ms per character; 0 = instant
+  evidenceNames?:  string[]; // for highlighting evidence refs in arguments
 }
 
 // ── Tool call display ───────────────────────────────────────────
@@ -209,8 +210,43 @@ function ToolCallBubble({ toolCall, role }: { toolCall: ToolCall; role: AgentRol
   );
 }
 
+/** Wrap evidence references in text with highlight spans */
+function highlightEvidenceRefs(text: string, evidenceNames: string[], role: AgentRole): ReactNode {
+  if (!evidenceNames.length) return text;
+  const sorted = [...evidenceNames].sort((a, b) => b.length - a.length);
+  const escaped = sorted.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const regex = new RegExp(`(${escaped.join("|")})`, "gi");
+  const parts = text.split(regex);
+  const highlightClass =
+    role === "prosecution"
+      ? "bg-[#c0392b]/25 text-[#ff8a7a] px-0.5 rounded"
+      : role === "defense"
+      ? "bg-[#1a6fa8]/25 text-[#7ec8ff] px-0.5 rounded"
+      : "bg-[#c9a227]/20 text-[#f5c518] px-0.5 rounded";
+  return parts.map((part, i) => {
+    const isMatch = evidenceNames.some((n) => n.toLowerCase() === part.toLowerCase());
+    return isMatch ? (
+      <mark key={i} className={highlightClass}>
+        {part}
+      </mark>
+    ) : (
+      part
+    );
+  });
+}
+
 // ── Single message item ─────────────────────────────────────────
-function MessageItem({ msg, role, textSpeed = 0 }: { msg: Message; role: AgentRole; textSpeed?: number }) {
+function MessageItem({
+  msg,
+  role,
+  textSpeed = 0,
+  evidenceNames = [],
+}: {
+  msg: Message;
+  role: AgentRole;
+  textSpeed?: number;
+  evidenceNames?: string[];
+}) {
   const cfg = ROLE_CONFIG[role];
 
   if (msg.type === "tool_call" && msg.toolCall) {
@@ -218,13 +254,17 @@ function MessageItem({ msg, role, textSpeed = 0 }: { msg: Message; role: AgentRo
   }
 
   if (msg.type === "motion") {
+    const motionContent =
+      evidenceNames.length > 0
+        ? highlightEvidenceRefs(msg.content, evidenceNames, role)
+        : msg.content;
     return (
       <div className="aa-stamp my-2 relative">
         <div className="px-3 py-2 rounded border border-orange-700/30 bg-orange-950/20">
           <div className="flex items-center gap-2 mb-0.5">
             <span className="text-[9px] font-bold tracking-widest text-orange-400/70">📋 MOTION FILED</span>
           </div>
-          <p className="text-[11px] text-orange-200/80 leading-relaxed">{msg.content}</p>
+          <p className="text-[11px] text-orange-200/80 leading-relaxed">{motionContent}</p>
         </div>
         {/* Stamp mark */}
         <span
@@ -238,13 +278,23 @@ function MessageItem({ msg, role, textSpeed = 0 }: { msg: Message; role: AgentRo
   }
 
   if (msg.type === "evidence") {
+    const evidenceStyle =
+      role === "prosecution"
+        ? "border-l-[3px] border-l-[#c0392b] bg-[#1a0a09]/40 border border-[#c0392b]/30"
+        : role === "defense"
+        ? "border-l-[3px] border-l-[#1a6fa8] bg-[#09101a]/40 border border-[#1a6fa8]/30"
+        : "border-l-[3px] border-l-slate-600 bg-slate-800/30 border border-slate-600/30";
+    const contentNode =
+      evidenceNames.length > 0
+        ? highlightEvidenceRefs(msg.content, evidenceNames, role)
+        : msg.content;
     return (
-      <div className="aa-evidence-flip my-2">
-        <div className="flex items-start gap-2 px-3 py-2 rounded border border-slate-600/30 bg-slate-800/30">
+      <div className="aa-evidence-flip aa-evidence-highlight my-2">
+        <div className={`flex items-start gap-2 px-3 py-2 rounded ${evidenceStyle}`}>
           <span className="text-base mt-0.5">🗂</span>
           <div>
             <div className="text-[9px] font-bold tracking-widest text-slate-400/60 mb-0.5">EVIDENCE ADMITTED</div>
-            <p className="text-[11px] text-slate-200/90 leading-relaxed">{msg.content}</p>
+            <p className="text-[11px] text-slate-200/90 leading-relaxed">{contentNode}</p>
           </div>
         </div>
       </div>
@@ -258,6 +308,10 @@ function MessageItem({ msg, role, textSpeed = 0 }: { msg: Message; role: AgentRo
   }
 
   // ── Argument: AA text-box style ──────────────────────────────
+  const typingDone = TypingQueue.isDone(msg.id);
+  const showHighlighted =
+    typingDone && evidenceNames.length > 0 && msg.type === "argument";
+
   return (
     <div className={`my-2 rounded ${cfg.textboxClass}`}>
       {/* Nameplate */}
@@ -269,7 +323,11 @@ function MessageItem({ msg, role, textSpeed = 0 }: { msg: Message; role: AgentRo
       {/* Content */}
       <div className="px-3 py-2">
         <p className="text-[11px] leading-relaxed" style={{ color: "var(--aa-parchment)" }}>
-          <TypewriterText id={msg.id} text={msg.content} speed={textSpeed} />
+          {showHighlighted ? (
+            highlightEvidenceRefs(msg.content, evidenceNames, role)
+          ) : (
+            <TypewriterText id={msg.id} text={msg.content} speed={textSpeed} />
+          )}
         </p>
       </div>
     </div>
@@ -286,6 +344,7 @@ export default function AgentPanel({
   evidenceCount = 0,
   showBenchmark = true,
   textSpeed = 15,
+  evidenceNames = [],
 }: AgentPanelProps) {
   const cfg = ROLE_CONFIG[role];
   const lastMsg = messages[messages.length - 1];
@@ -365,7 +424,7 @@ export default function AgentPanel({
           </div>
         ) : (
           messages.map((msg) => (
-            <MessageItem key={msg.id} msg={msg} role={role} textSpeed={textSpeed} />
+            <MessageItem key={msg.id} msg={msg} role={role} textSpeed={textSpeed} evidenceNames={evidenceNames} />
           ))
         )}
       </div>

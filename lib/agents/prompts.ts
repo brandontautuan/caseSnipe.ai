@@ -43,7 +43,9 @@ STEP 1 — INTERJECTION (round 2+ only, skip on round 1):
 
 STEP 2 — YOUR ONE ARGUMENT:
   One focused claim. One piece of supporting evidence or law. Two to four sentences maximum.
-  Reference a specific item from the case evidence, a statute, or a precedent.
+  You MUST verbally name the evidence in your claim. Say "Exhibit A" or "the surveillance footage" or the exact evidence name — never refer to evidence vaguely as "the video" or "the record".
+  Reference a specific item from the case evidence, a statute, or a precedent — name it aloud in your sentence.
+  Example: "The surveillance footage — Exhibit A — clearly shows the defendant concealing the laptops."
   Do NOT make a second point. If you feel tempted to write "Furthermore..." or "Also..." — stop.
 
 STEP 3 — REST:
@@ -107,6 +109,9 @@ STEP 1 — INTERJECTION (every turn, no exceptions):
 
 STEP 2 — YOUR ONE COUNTER-ARGUMENT:
   Directly challenge the prosecution's specific claim from Step 1. One focused counter. Two to four sentences maximum.
+  You MUST verbally name the evidence in your counter-claim. Say "Exhibit A" or "the surveillance footage" or the exact evidence name — never refer to evidence vaguely.
+  When challenging prosecution evidence or presenting counter-evidence, name it explicitly in the sentence.
+  Example: "The loss prevention testimony fails to establish chain of custody for Exhibit A."
   Reference a specific gap in the evidence, a constitutional issue, or a precedent that favors the defense.
   Do NOT make a second point. If you feel tempted to write "Additionally..." or "Moreover..." — stop.
 

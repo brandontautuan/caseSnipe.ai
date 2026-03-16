@@ -233,24 +233,35 @@ export default function JudgePanel({
                 </p>
               </div>
             ) : (
-              filteredEvents.map((event) => (
-                <div key={event.id} className="flex items-start gap-2">
-                  <span className="text-xs mt-0.5 shrink-0">{EVENT_ICONS[event.type]}</span>
-                  <div className="flex-1 min-w-0">
-                    <span className={`text-[10px] leading-relaxed ${EVENT_COLORS[event.type]}`}>
-                      {event.description}
-                    </span>
-                    {event.side && (
-                      <span className={`ml-1.5 text-[9px] font-bold tracking-wider ${
-                        event.side === "prosecution" ? "text-[#c0392b]/50" : "text-[#1a6fa8]/60"
-                      }`}>
-                        [{event.side.toUpperCase()}]
+              filteredEvents.map((event) => {
+                const isEvidence = event.type === "evidence_admitted";
+                const evidenceHighlight =
+                  isEvidence && event.side === "prosecution"
+                    ? "border-l-2 border-l-[#c0392b]/60 bg-[#1a0a09]/20 pl-2 -ml-1 rounded"
+                    : isEvidence && event.side === "defense"
+                    ? "border-l-2 border-l-[#1a6fa8]/60 bg-[#09101a]/20 pl-2 -ml-1 rounded"
+                    : isEvidence
+                    ? "border-l-2 border-l-slate-500/40 bg-slate-800/15 pl-2 -ml-1 rounded"
+                    : "";
+                return (
+                  <div key={event.id} className={`flex items-start gap-2 ${evidenceHighlight}`}>
+                    <span className="text-xs mt-0.5 shrink-0">{EVENT_ICONS[event.type]}</span>
+                    <div className="flex-1 min-w-0">
+                      <span className={`text-[10px] leading-relaxed ${EVENT_COLORS[event.type]}`}>
+                        {event.description}
                       </span>
-                    )}
+                      {event.side && (
+                        <span className={`ml-1.5 text-[9px] font-bold tracking-wider ${
+                          event.side === "prosecution" ? "text-[#c0392b]/50" : "text-[#1a6fa8]/60"
+                        }`}>
+                          [{event.side.toUpperCase()}]
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[9px] text-slate-700 shrink-0 mt-0.5">{event.timestamp}</span>
                   </div>
-                  <span className="text-[9px] text-slate-700 shrink-0 mt-0.5">{event.timestamp}</span>
-                </div>
-              ))
+                );
+              })
             )
           )}
         </div>
